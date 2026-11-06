@@ -1,10 +1,10 @@
-# 貓咪放鬆螢幕
+# Calm Cat Screen
 
-給貓看的柔和光影網頁：大片、緩慢、平滑的畫面，貓有興趣，但不容易想撲，所以比較不會挫折。
+A web page of soft, slow, smooth light and motion for cats to watch. Cats stay curious, but nothing looks like prey, so they are less likely to pounce and get frustrated.
 
-- 三種畫面：光暈、水波、極光
-- 可調速度、可設定 10 / 20 / 30 分鐘後慢慢變暗
-- 長按右下角圓點 1 秒開啟設定（避免貓亂按）
-- 平板平放使用效果最好
+- Three scenes: Glow, Ripples, Aurora
+- Adjustable speed; optional auto-stop after 10 / 20 / 30 minutes (the screen slowly fades to black)
+- Long-press the dot at the bottom right for 1 second to open settings (so cats can't trigger it)
+- Works best on a tablet lying flat
 
-純 HTML / JavaScript，沒有任何相依套件。
+Plain HTML and JavaScript, no dependencies.

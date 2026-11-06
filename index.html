@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>貓咪放鬆螢幕｜只看不抓</title>
+<title>Calm Cat Screen | Watch, Don't Hunt</title>
 <style>
   html, body { margin: 0; height: 100%; background: #070b14; overflow: hidden; overscroll-behavior: none; }
   body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; font-family: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; color: #dbe7f5; }
@@ -30,37 +30,37 @@
 <body>
 <canvas id="c"></canvas>
 <div id="fade"></div>
-<div id="hint">長按右下角圓點 1 秒，開啟設定</div>
-<button id="gear" aria-label="設定（長按）">⚙</button>
+<div id="hint">Long-press the dot at the bottom right for 1 second to open settings</div>
+<button id="gear" aria-label="Settings (long-press)">⚙</button>
 
 <div id="panel">
   <div class="card">
-    <h1>貓咪放鬆螢幕</h1>
-    <p class="sub">全部是大片、柔和、緩慢的光影，沒有小目標會逃跑，貓看得有興趣，但不容易想撲。</p>
+    <h1>Calm Cat Screen</h1>
+    <p class="sub">Large, soft, slow light and motion. No small targets that run away, so cats stay curious without wanting to pounce.</p>
     <div class="row">
-      <label>畫面</label>
+      <label>Scene</label>
       <div class="seg" id="modes">
-        <button data-m="orbs" class="on">光暈</button>
-        <button data-m="ripples">水波</button>
-        <button data-m="aurora">極光</button>
+        <button data-m="orbs" class="on">Glow</button>
+        <button data-m="ripples">Ripples</button>
+        <button data-m="aurora">Aurora</button>
       </div>
     </div>
     <div class="row">
-      <label>速度（越慢越放鬆）<span id="spv"></span></label>
+      <label>Speed (slower is calmer)<span id="spv"></span></label>
       <input type="range" id="speed" min="0.3" max="2" step="0.1" value="1">
     </div>
     <div class="row">
-      <label>自動結束（畫面慢慢變暗）</label>
+      <label>Auto-stop (screen slowly fades to black)</label>
       <div class="seg" id="timers">
-        <button data-t="0" class="on">不設</button>
-        <button data-t="10">10 分</button>
-        <button data-t="20">20 分</button>
-        <button data-t="30">30 分</button>
+        <button data-t="0" class="on">Off</button>
+        <button data-t="10">10 min</button>
+        <button data-t="20">20 min</button>
+        <button data-t="30">30 min</button>
       </div>
     </div>
     <div class="actions">
-      <button id="fs">全螢幕</button>
-      <button id="go" class="primary">開始</button>
+      <button id="fs">Fullscreen</button>
+      <button id="go" class="primary">Start</button>
     </div>
   </div>
 </div>
@@ -83,7 +83,7 @@
   window.addEventListener('resize', resize);
   resize();
 
-  // 光暈：大而柔、緩慢平滑漂移，貓看得到但沒有「獵物」的突然動作
+  // Glow: large, soft orbs drifting slowly and smoothly; visible to cats but with no sudden, prey-like movement
   var cols = [[70,190,185],[240,205,120],[90,140,230],[120,210,150],[70,190,185],[240,205,120],[90,140,230]];
   var orbs = cols.map(function (c, i) {
     return { c: c, fx: 0.12 + (i * 0.037) % 0.14, fy: 0.10 + (i * 0.051) % 0.13,
@@ -106,7 +106,7 @@
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  // 水波：只有一圈圈擴散的波紋，沒有可抓的東西
+  // Ripples: only expanding rings, nothing to catch
   function addRipple(x, y) { ripples.push({ x: x, y: y, age: 0 }); if (ripples.length > 14) ripples.shift(); }
   function drawRipples(dt) {
     var g = ctx.createLinearGradient(0, 0, 0, H);
@@ -131,7 +131,7 @@
     }
   }
 
-  // 極光：幾條緩慢起伏的彩帶
+  // Aurora: a few slowly undulating ribbons
   var bands = [[70,200,170],[90,150,230],[200,210,120],[110,200,200]];
   function drawAurora() {
     ctx.fillStyle = '#070b14'; ctx.fillRect(0, 0, W, H);
@@ -165,13 +165,13 @@
   }
   requestAnimationFrame(frame);
 
-  // 貓爪碰螢幕：只在水波畫面產生一圈柔和波紋，不會有東西被「抓到」
+  // Paw touch: only spawns a soft ripple in the Ripples scene; nothing can be "caught"
   cv.addEventListener('pointerdown', function (e) {
     if (ended) return;
     if (mode === 'ripples') addRipple(e.clientX, e.clientY);
   });
 
-  // 設定面板（長按圓點開啟，避免貓亂碰）
+  // Settings panel (long-press the dot to open, so cats do not trigger it)
   var panel = document.getElementById('panel');
   var gear = document.getElementById('gear');
   var hint = document.getElementById('hint');
@@ -202,7 +202,7 @@
   pick('timers', 'data-t', function (t) { minutes = +t; });
 
   var sp = document.getElementById('speed'), spv = document.getElementById('spv');
-  function showSp() { spv.textContent = '：' + speed.toFixed(1) + '×'; }
+  function showSp() { spv.textContent = ': ' + speed.toFixed(1) + '×'; }
   sp.addEventListener('input', function () { speed = +sp.value; showSp(); });
   showSp();
 
