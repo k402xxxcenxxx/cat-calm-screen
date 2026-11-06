@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>貓咪放鬆螢幕｜只看不抓</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #070b14; overflow: hidden; overscroll-behavior: none; }
+  body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; font-family: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; color: #dbe7f5; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+  #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 8s ease; }
+  #gear { position: fixed; right: 10px; bottom: 10px; width: 52px; height: 52px; border-radius: 50%; border: 0; background: rgba(255,255,255,.06); color: rgba(255,255,255,.35); font-size: 22px; touch-action: none; }
+  #hint { position: fixed; left: 0; right: 0; bottom: 70px; text-align: center; font-size: 13px; color: rgba(255,255,255,.35); transition: opacity 2s; pointer-events: none; }
+  #panel { position: fixed; inset: 0; background: rgba(5,8,16,.92); display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+  #panel.open { display: flex; }
+  .card { width: min(420px, 100%); background: #111a2b; border-radius: 16px; padding: 20px; box-sizing: border-box; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 16px; font-size: 13px; color: #8fa3bd; line-height: 1.5; }
+  .row { margin: 14px 0; }
+  .row > label { display: block; font-size: 13px; color: #8fa3bd; margin-bottom: 6px; }
+  .seg { display: flex; gap: 6px; }
+  .seg button { flex: 1; padding: 10px 4px; border-radius: 10px; border: 1px solid #2a3a55; background: #16233a; color: #dbe7f5; font-size: 14px; }
+  .seg button.on { background: #2f6f8f; border-color: #4ba3c7; }
+  input[type=range] { width: 100%; }
+  .actions { display: flex; gap: 8px; margin-top: 18px; }
+  .actions button { flex: 1; padding: 12px; border-radius: 10px; border: 0; font-size: 15px; background: #2a3a55; color: #fff; }
+  .actions button.primary { background: #3a8bb0; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="fade"></div>
+<div id="hint">長按右下角圓點 1 秒，開啟設定</div>
+<button id="gear" aria-label="設定（長按）">⚙</button>
+
+<div id="panel">
+  <div class="card">
+    <h1>貓咪放鬆螢幕</h1>
+    <p class="sub">全部是大片、柔和、緩慢的光影，沒有小目標會逃跑，貓看得有興趣，但不容易想撲。</p>
+    <div class="row">
+      <label>畫面</label>
+      <div class="seg" id="modes">
+        <button data-m="orbs" class="on">光暈</button>
+        <button data-m="ripples">水波</button>
+        <button data-m="aurora">極光</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>速度（越慢越放鬆）<span id="spv"></span></label>
+      <input type="range" id="speed" min="0.3" max="2" step="0.1" value="1">
+    </div>
+    <div class="row">
+      <label>自動結束（畫面慢慢變暗）</label>
+      <div class="seg" id="timers">
+        <button data-t="0" class="on">不設</button>
+        <button data-t="10">10 分</button>
+        <button data-t="20">20 分</button>
+        <button data-t="30">30 分</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="fs">全螢幕</button>
+      <button id="go" class="primary">開始</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var cv = document.getElementById('c');
+  var ctx = cv.getContext('2d');
+  var W = 0, H = 0, DPR = 1;
+  var mode = 'orbs', speed = 1, T = 0, last = 0;
+  var ripples = [], nextRipple = 1.5;
+  var timerId = null, ended = false;
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // 光暈：大而柔、緩慢平滑漂移，貓看得到但沒有「獵物」的突然動作
+  var cols = [[70,190,185],[240,205,120],[90,140,230],[120,210,150],[70,190,185],[240,205,120],[90,140,230]];
+  var orbs = cols.map(function (c, i) {
+    return { c: c, fx: 0.12 + (i * 0.037) % 0.14, fy: 0.10 + (i * 0.051) % 0.13,
+             px: i * 1.7, py: i * 2.3, r: 0.22 + (i % 3) * 0.05 };
+  });
+
+  function drawOrbs() {
+    ctx.fillStyle = '#070b14'; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+    var m = Math.min(W, H);
+    orbs.forEach(function (o) {
+      var x = W * (0.5 + 0.36 * Math.sin(T * o.fx + o.px));
+      var y = H * (0.5 + 0.36 * Math.sin(T * o.fy + o.py));
+      var r = m * o.r * (1 + 0.08 * Math.sin(T * 0.2 + o.px));
+      var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(' + o.c.join(',') + ',0.34)');
+      g.addColorStop(1, 'rgba(' + o.c.join(',') + ',0)');
+      ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    });
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // 水波：只有一圈圈擴散的波紋，沒有可抓的東西
+  function addRipple(x, y) { ripples.push({ x: x, y: y, age: 0 }); if (ripples.length > 14) ripples.shift(); }
+  function drawRipples(dt) {
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#08162a'); g.addColorStop(1, '#0a2a3a');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    nextRipple -= dt;
+    if (nextRipple <= 0) { addRipple(W * (0.15 + Math.random() * 0.7), H * (0.15 + Math.random() * 0.7)); nextRipple = 4 + Math.random() * 3; }
+    for (var i = ripples.length - 1; i >= 0; i--) {
+      var p = ripples[i]; p.age += dt;
+      var life = 10;
+      if (p.age > life) { ripples.splice(i, 1); continue; }
+      var fade = 1 - p.age / life;
+      for (var k = 0; k < 3; k++) {
+        var r = p.age * 45 - k * 34;
+        if (r <= 0) continue;
+        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(140,215,235,' + (0.20 * fade).toFixed(3) + ')';
+        ctx.lineWidth = 7; ctx.stroke();
+        ctx.strokeStyle = 'rgba(190,235,245,' + (0.28 * fade).toFixed(3) + ')';
+        ctx.lineWidth = 1.5; ctx.stroke();
+      }
+    }
+  }
+
+  // 極光：幾條緩慢起伏的彩帶
+  var bands = [[70,200,170],[90,150,230],[200,210,120],[110,200,200]];
+  function drawAurora() {
+    ctx.fillStyle = '#070b14'; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+    bands.forEach(function (c, k) {
+      var base = H * (0.28 + k * 0.14);
+      var g = ctx.createLinearGradient(0, base - H * 0.1, 0, base + H * 0.28);
+      g.addColorStop(0, 'rgba(' + c.join(',') + ',0)');
+      g.addColorStop(0.35, 'rgba(' + c.join(',') + ',0.28)');
+      g.addColorStop(1, 'rgba(' + c.join(',') + ',0)');
+      ctx.beginPath(); ctx.moveTo(0, H);
+      for (var x = 0; x <= W + 8; x += 8) {
+        var y = base + Math.sin(x * 0.004 + T * 0.30 * (1 + k * 0.2) + k) * H * 0.08
+                     + Math.sin(x * 0.009 - T * 0.20 + k * 2) * H * 0.035;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(W + 8, H); ctx.closePath();
+      ctx.fillStyle = g; ctx.fill();
+    });
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  function frame(ts) {
+    var dt = last ? Math.min((ts - last) / 1000, 0.1) : 0;
+    last = ts;
+    dt *= speed; T += dt;
+    if (mode === 'orbs') drawOrbs();
+    else if (mode === 'ripples') drawRipples(dt);
+    else drawAurora();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // 貓爪碰螢幕：只在水波畫面產生一圈柔和波紋，不會有東西被「抓到」
+  cv.addEventListener('pointerdown', function (e) {
+    if (ended) return;
+    if (mode === 'ripples') addRipple(e.clientX, e.clientY);
+  });
+
+  // 設定面板（長按圓點開啟，避免貓亂碰）
+  var panel = document.getElementById('panel');
+  var gear = document.getElementById('gear');
+  var hint = document.getElementById('hint');
+  var fade = document.getElementById('fade');
+  var pressT = null;
+  gear.addEventListener('pointerdown', function () { pressT = setTimeout(openPanel, 1000); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) {
+    gear.addEventListener(ev, function () { clearTimeout(pressT); });
+  });
+  setTimeout(function () { hint.style.opacity = 0; }, 8000);
+
+  function openPanel() {
+    panel.classList.add('open');
+    if (ended) { ended = false; fade.style.transition = 'opacity .5s'; fade.style.opacity = 0; }
+  }
+  function closePanel() { panel.classList.remove('open'); }
+
+  function pick(groupId, attr, cb) {
+    var g = document.getElementById(groupId);
+    g.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      g.querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); });
+      b.classList.add('on'); cb(b.getAttribute(attr));
+    });
+  }
+  pick('modes', 'data-m', function (m) { mode = m; });
+  var minutes = 0;
+  pick('timers', 'data-t', function (t) { minutes = +t; });
+
+  var sp = document.getElementById('speed'), spv = document.getElementById('spv');
+  function showSp() { spv.textContent = '：' + speed.toFixed(1) + '×'; }
+  sp.addEventListener('input', function () { speed = +sp.value; showSp(); });
+  showSp();
+
+  document.getElementById('fs').addEventListener('click', function () {
+    try { var p = document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+  });
+
+  document.getElementById('go').addEventListener('click', function () {
+    closePanel();
+    clearTimeout(timerId);
+    fade.style.transition = 'opacity .5s'; fade.style.opacity = 0; ended = false;
+    if (minutes > 0) {
+      timerId = setTimeout(function () {
+        ended = true; fade.style.transition = 'opacity 8s ease'; fade.style.opacity = 1;
+      }, minutes * 60000);
+    }
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(function () {}); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>
