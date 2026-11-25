@@ -3,7 +3,10 @@
 A web page of soft, slow, smooth light and motion for cats to watch. Cats stay curious, but nothing looks like prey, so they are less likely to pounce and get frustrated.
 
 - Four scenes: Glow, Ripples, Aurora, and Lotto
-- **Lotto (cat number picker):** numbered balls pop up at random on a water background and drift slowly. Whichever ball the cat touches is saved.
+- **Lotto (cat number picker):** numbered balls sneak onto a water background and the cat catches them. Whichever ball the cat touches is saved.
+  - Prey-like behavior: balls creep in from the screen edges, freeze and twitch, dash, creep, dodge near-misses and slips away if ignored; if nothing is touched for a while, one ball makes a show of itself
+  - Liveliness setting (Gentle / Playful / Lively) and synthesized sound effects (chirps, squeaks, rustles; adjustable volume)
+  - Catching a ball gives a squeak, a splash and a ripple
   - Set the number range and how many numbers to pick
   - Optional second zone with its own range and count (for example the Taiwan Super Lotto special number); both zones appear together and differ only by color (main = blue, second zone = amber)
   - Presets for Taiwan Super Lotto (6 of 1-38 + 1 of 1-8) and Lotto 6/49

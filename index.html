@@ -53,6 +53,7 @@
   #result h2 { margin: 0 0 14px; font-size: 20px; }
   #result .lab { font-size: 12px; color: #8fa3bd; margin: 12px 0 2px; text-transform: uppercase; letter-spacing: .06em; }
   #result .when { font-size: 12px; color: #6f86a6; margin-top: 14px; }
+  #result .tip { font-size: 13px; color: #8fa3bd; margin-top: 10px; }
   #result .btns { display: flex; gap: 10px; margin-top: 22px; }
   #result .btns button { position: relative; overflow: hidden; padding: 12px 20px; border-radius: 10px; border: 0; font-size: 15px; color: #fff; background: #2a3a55; }
   .hold::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(255,255,255,.25); transition: width .2s; }
@@ -76,6 +77,7 @@
     <div id="res-sp"></div>
   </div>
   <div class="when" id="res-when"></div>
+  <div class="tip">Nice hunt! Finish the play session with a real toy or a treat.</div>
   <div class="btns">
     <button id="res-copy">Copy</button>
     <button id="res-new" class="hold">New round (hold)</button>
@@ -127,7 +129,19 @@
         <label>Balls on screen<span id="obv"></span></label>
         <input type="range" id="onscreen" min="3" max="12" step="1" value="6">
       </div>
-      <p class="note">Main-zone balls are blue and second-zone balls are amber. Balls pop up at random and drift slowly; whichever one your cat touches is saved. For fun only: random picks don't change any odds.</p>
+      <div class="row">
+        <label>Liveliness (how prey-like the balls move)</label>
+        <div class="seg" id="lively">
+          <button data-l="1">Gentle</button>
+          <button data-l="2" class="on">Playful</button>
+          <button data-l="3">Lively</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>Sound (chirps, squeaks, rustles)<span id="volv"></span></label>
+        <input type="range" id="vol" min="0" max="100" step="5" value="50">
+      </div>
+      <p class="note">Main-zone balls are blue and second-zone balls are amber. Balls sneak in from the screen edges, dash, freeze, twitch and dodge near-misses like real prey, and a ball your cat catches is saved. Tip: tap a ball yourself first to show your cat how it works. For fun only: random picks don't change any odds.</p>
       <div class="row">
         <label>History</label>
         <div id="hist"></div>
@@ -249,7 +263,7 @@
   }
 
   // ---------- Lotto: numbered balls pop up on the water; the one a cat touches is saved
-  var cfg = { main: { min: 1, max: 38, count: 6 }, sp: { on: true, min: 1, max: 8, count: 1 }, onscreen: 6 };
+  var cfg = { main: { min: 1, max: 38, count: 6 }, sp: { on: true, min: 1, max: 8, count: 1 }, onscreen: 6, lively: 2, vol: 50 };
   var round = null;   // { picks: {main: [], sp: []}, balls: [], spawnCd: n, done: bool, entry: obj }
   var BALL = {
     main: { hi: [160, 205, 255], lo: [30, 80, 190], glow: [90, 150, 255], text: '#ffffff' },
@@ -269,7 +283,7 @@
     $('lm-min').value = cfg.main.min; $('lm-max').value = cfg.main.max; $('lm-count').value = cfg.main.count;
     $('ls-on').checked = cfg.sp.on;
     $('ls-min').value = cfg.sp.min; $('ls-max').value = cfg.sp.max; $('ls-count').value = cfg.sp.count;
-    $('onscreen').value = cfg.onscreen; showOb();
+    $('onscreen').value = cfg.onscreen; showOb(); setLively(); $('vol').value = cfg.vol; showVol();
   }
   function readCfg() {
     var m = clampZone(num('lm-min'), num('lm-max'), num('lm-count'));
@@ -277,14 +291,18 @@
     cfg.main = m;
     cfg.sp = { on: $('ls-on').checked, min: s.min, max: s.max, count: s.count };
     cfg.onscreen = clamp(parseInt($('onscreen').value, 10) || 6, 3, 12);
+    cfg.vol = clamp(parseInt($('vol').value, 10) || 0, 0, 100);
     writeCfg();
     store('catCalm.cfg', cfg);
   }
   function showOb() { $('obv').textContent = ': ' + $('onscreen').value; }
   $('onscreen').addEventListener('input', showOb);
+  function setLively() { $('lively').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-l') === cfg.lively); }); }
+  function showVol() { $('volv').textContent = ': ' + (cfg.vol > 0 ? cfg.vol + '%' : 'off'); }
+  $('vol').addEventListener('input', function () { cfg.vol = clamp(parseInt($('vol').value, 10) || 0, 0, 100); applyVol(); showVol(); });
 
   var saved = store('catCalm.cfg');
-  if (saved && saved.main && saved.sp) { cfg = saved; cfg.main = clampZone(cfg.main.min, cfg.main.max, cfg.main.count); var sz = clampZone(cfg.sp.min, cfg.sp.max, cfg.sp.count); cfg.sp = { on: !!cfg.sp.on, min: sz.min, max: sz.max, count: sz.count }; cfg.onscreen = clamp(cfg.onscreen || 6, 3, 12); }
+  if (saved && saved.main && saved.sp) { cfg = saved; cfg.main = clampZone(cfg.main.min, cfg.main.max, cfg.main.count); var sz = clampZone(cfg.sp.min, cfg.sp.max, cfg.sp.count); cfg.sp = { on: !!cfg.sp.on, min: sz.min, max: sz.max, count: sz.count }; cfg.onscreen = clamp(cfg.onscreen || 6, 3, 12); cfg.lively = clamp(cfg.lively || 2, 1, 3); cfg.vol = typeof cfg.vol === 'number' ? clamp(cfg.vol, 0, 100) : 50; }
   writeCfg();
 
   $('presets').addEventListener('click', function (e) {
@@ -297,11 +315,50 @@
     writeCfg();
   });
 
+  // ---------- Sound: synthesized chirps, squeaks and rustles (no audio files)
+  var AC = null, master = null, noiseBuf = null, lastSnd = {};
+  function applyVol() { if (master) master.gain.value = cfg.vol / 100 * 0.8; }
+  function audioInit() {
+    try {
+      if (!AC) {
+        var Ctor = window.AudioContext || window.webkitAudioContext; if (!Ctor) return;
+        AC = new Ctor(); master = AC.createGain(); master.connect(AC.destination); applyVol();
+        noiseBuf = AC.createBuffer(1, Math.floor(AC.sampleRate * 0.3), AC.sampleRate);
+        var d = noiseBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      if (AC.state === 'suspended') AC.resume();
+    } catch (e) { AC = null; }
+  }
+  function tone(type, f0, f1, t0, dur, vol) {
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + dur + 0.02);
+  }
+  function snd(kind) {
+    if (!AC || !master || cfg.vol <= 0) return;
+    var now = AC.currentTime;
+    if (lastSnd[kind] && now - lastSnd[kind] < (kind === 'scurry' ? 0.25 : 0.12)) return;
+    lastSnd[kind] = now;
+    try {
+      if (kind === 'chirp') { tone('sine', 2200, 3600, now, 0.09, 0.35); tone('sine', 2600, 4200, now + 0.12, 0.09, 0.3); }
+      else if (kind === 'squeak') { tone('triangle', 3200, 2000, now, 0.12, 0.3); tone('triangle', 3000, 1800, now + 0.15, 0.1, 0.22); }
+      else if (kind === 'catch') { tone('triangle', 3400, 1500, now, 0.16, 0.45); tone('sine', 420, 160, now, 0.12, 0.4); }
+      else if (kind === 'done') { [523, 659, 784].forEach(function (f, i) { tone('triangle', f, f, now + i * 0.16, 0.3, 0.3); }); }
+      else if (kind === 'scurry') {
+        var src = AC.createBufferSource(), bp = AC.createBiquadFilter(), g = AC.createGain();
+        src.buffer = noiseBuf; bp.type = 'bandpass'; bp.frequency.value = 3500 + Math.random() * 2500; bp.Q.value = 0.9;
+        g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(0.5, now + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+        src.connect(bp); bp.connect(g); g.connect(master); src.start(now); src.stop(now + 0.22);
+      }
+    } catch (e) {}
+  }
+
   var hud = $('hud'), hudMain = $('hud-main'), hudSp = $('hud-sp');
   function zoneCfg(z) { return z === 'main' ? cfg.main : cfg.sp; }
   function zonesActive() { return cfg.sp.on ? ['main', 'sp'] : ['main']; }
   function isZoneDone(z) { return round.picks[z].length >= zoneCfg(z).count; }
-  function isLive(b) { return b.state === 'in' || b.state === 'idle'; }
+  function isLive(b) { return b.state === 'idle'; }
   function liveCount(z) { return round.balls.filter(function (b) { return b.z === z && isLive(b); }).length; }
 
   function renderHud() {
@@ -324,10 +381,20 @@
 
   function startRound() {
     hideResult();
-    round = { picks: { main: [], sp: [] }, balls: [], spawnCd: 0.3, done: false, entry: null };
+    parts = [];
+    round = { picks: { main: [], sp: [] }, balls: [], spawnCd: 0.3, done: false, entry: null, idle: 0 };
     renderHud();
   }
 
+  var parts = [];   // splash droplets
+  // Prey-like movement: sneak in from an edge, freeze, twitch, dash, creep, dodge, and finally escape
+  var LIV = [null,
+    { dash: [70, 110],  dd: [0.40, 0.80], pause: [1.4, 3.0] },
+    { dash: [130, 210], dd: [0.30, 0.65], pause: [0.6, 1.8] },
+    { dash: [210, 320], dd: [0.25, 0.50], pause: [0.3, 1.0] }
+  ];
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function sc() { return clamp(Math.min(W, H) / 600, 0.7, 1.6); }
   function ballRadius() { return Math.max(30, Math.min(58, Math.min(W, H) * 0.075)); }
   function zoneCap(z) {
     var both = cfg.sp.on && !isZoneDone('sp') && !isZoneDone('main');
@@ -343,21 +410,28 @@
     for (var n = c.min; n <= c.max; n++) if (!taken[n]) out.push(n);
     return out;
   }
-  function findPos(r) {
-    var top = 70 + r, bottom = H - 80 - r;
-    if (bottom < top) { top = H * 0.3; bottom = H * 0.7; }
-    var left = r, right = W - r; if (right < left) { left = W * 0.3; right = W * 0.7; }
-    var best = null;
-    for (var t = 0; t < 14; t++) {
-      var x = left + Math.random() * (right - left), y = top + Math.random() * (bottom - top), ok = true;
-      for (var i = 0; i < round.balls.length; i++) {
-        var b = round.balls[i]; if (!isLive(b)) continue;
-        if (Math.hypot(b.x - x, b.y - y) < r * 2.3) { ok = false; break; }
-      }
-      if (ok) return { x: x, y: y };
-      if (!best) best = { x: x, y: y };
+  function inside(b) { return b.x >= b.r && b.x <= W - b.r && b.y >= b.r && b.y <= H - b.r; }
+  function dash(b, ang, spd, dur) {
+    b.mv = 'dash'; b.vx = Math.cos(ang) * spd; b.vy = Math.sin(ang) * spd; b.pt = b.pd = dur;
+    snd('scurry');
+  }
+  function pauseBall(b, d) { b.mv = 'pause'; b.vx = b.vy = 0; b.pt = d; b.tw = rnd(0.15, 0.5); }
+  function nextMove(b) {
+    var L = LIV[cfg.lively], k = sc();
+    if (Math.random() < 0.65) {
+      var ang = Math.random() * Math.PI * 2;
+      if (Math.random() < 0.5) ang = Math.atan2(H / 2 - b.y, W / 2 - b.x) + (Math.random() - 0.5) * 1.8;
+      dash(b, ang, rnd(L.dash[0], L.dash[1]) * k, rnd(L.dd[0], L.dd[1]));
+    } else {
+      var a = Math.random() * Math.PI * 2, s = rnd(22, 40) * k;
+      b.mv = 'creep'; b.vx = Math.cos(a) * s; b.vy = Math.sin(a) * s; b.pt = rnd(0.8, 1.8);
     }
-    return best;
+  }
+  function startExit(b) {
+    var k = sc(), dl = b.x, dr = W - b.x, du = b.y, dd = H - b.y, m = Math.min(dl, dr, du, dd);
+    b.exiting = true; b.vx = 0; b.vy = 0;
+    if (m === dl) b.vx = -200 * k; else if (m === dr) b.vx = 200 * k; else if (m === du) b.vy = -200 * k; else b.vy = 200 * k;
+    snd('scurry');
   }
   function spawnBall() {
     var zs = zonesActive().filter(function (z) {
@@ -367,46 +441,87 @@
     var z = zs[0];
     if (zs.length > 1) { var total = zoneCap('main') + zoneCap('sp'); z = Math.random() * total < zoneCap('main') ? 'main' : 'sp'; }
     var pool = available(z), n = pool[Math.floor(Math.random() * pool.length)];
-    var r = ballRadius(), p = findPos(r), ang = Math.random() * Math.PI * 2, sp = 18 + Math.random() * 16;
-    round.balls.push({ z: z, n: n, x: p.x, y: p.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, r: r,
-                       age: 0, life: 12 + Math.random() * 6, state: 'in', st: 0, ph: Math.random() * 6.28 });
-    addRipple(p.x, p.y);
+    var r = ballRadius(), k = sc(), x = 0, y = 0, ix = 0, iy = 0;
+    for (var t = 0; t < 8; t++) {
+      var side = Math.floor(Math.random() * 4);
+      if (side === 0) { x = -r * 0.8; y = rnd(H * 0.15, H * 0.85); ix = 1; iy = 0; }
+      else if (side === 1) { x = W + r * 0.8; y = rnd(H * 0.15, H * 0.85); ix = -1; iy = 0; }
+      else if (side === 2) { x = rnd(W * 0.1, W * 0.9); y = -r * 0.8; ix = 0; iy = 1; }
+      else { x = rnd(W * 0.1, W * 0.9); y = H + r * 0.8; ix = 0; iy = -1; }
+      var clear = true;
+      for (var i = 0; i < round.balls.length; i++) {
+        var o = round.balls[i]; if (!isLive(o)) continue;
+        if (Math.hypot(o.x - x, o.y - y) < r * 2.3) { clear = false; break; }
+      }
+      if (clear) break;
+    }
+    round.balls.push({ z: z, n: n, x: x, y: y, vx: ix * 55 * k, vy: iy * 55 * k, r: r, age: 0, life: rnd(14, 22),
+                       state: 'idle', mv: 'enter', pt: 0, pd: 1, st: 0, ph: Math.random() * 6.28,
+                       tw: 0, twx: 0, twy: 0, cd: 0, exiting: false });
+    addRipple(clamp(x, 20, W - 20), clamp(y, 20, H - 20));
+    snd(Math.random() < 0.5 ? 'chirp' : 'squeak');
   }
 
   function updateBalls(dt) {
     if (!round) return;
+    var k = sc(), L = LIV[cfg.lively];
+    round.idle += dt;
     round.balls.forEach(function (b) {
-      b.age += dt; b.st += dt;
-      if (b.state === 'in' || b.state === 'idle') {
+      b.age += dt; b.st += dt; b.cd = Math.max(0, b.cd - dt);
+      b.twx *= Math.exp(-dt * 10); b.twy *= Math.exp(-dt * 10);
+      if (b.state !== 'idle') return;
+      if (b.exiting) { b.x += b.vx * dt; b.y += b.vy * dt; return; }
+      if (b.mv === 'enter') {
         b.x += b.vx * dt; b.y += b.vy * dt;
-        if ((b.x < b.r && b.vx < 0) || (b.x > W - b.r && b.vx > 0)) b.vx = -b.vx;
-        if ((b.y < 70 + b.r * 0.5 && b.vy < 0) || (b.y > H - 80 && b.vy > 0)) b.vy = -b.vy;
-        if (b.state === 'in' && b.st >= 0.6) { b.state = 'idle'; b.st = 0; }
-        else if (b.state === 'idle' && b.age > b.life) { b.state = 'out'; b.st = 0; }
+        if (inside(b)) pauseBall(b, rnd(0.4, 1.0));
+        return;
       }
+      b.pt -= dt;
+      if (b.mv !== 'pause') {
+        var f = b.mv === 'dash' ? 0.4 + 0.6 * Math.max(0, b.pt / b.pd) : 1;
+        b.x += b.vx * f * dt; b.y += b.vy * f * dt;
+        if ((b.x < b.r && b.vx < 0) || (b.x > W - b.r && b.vx > 0)) b.vx = -b.vx;
+        if ((b.y < b.r && b.vy < 0) || (b.y > H - b.r && b.vy > 0)) b.vy = -b.vy;
+      } else {
+        b.tw -= dt;
+        if (b.tw <= 0) { var a = Math.random() * 6.28; b.twx = Math.cos(a) * 6 * k; b.twy = Math.sin(a) * 6 * k; b.tw = rnd(0.25, 0.7); }
+      }
+      if (b.pt <= 0) { if (b.mv === 'pause') nextMove(b); else pauseBall(b, rnd(L.pause[0], L.pause[1])); }
+      if (b.age > b.life) startExit(b);
     });
     round.balls = round.balls.filter(function (b) {
-      return !((b.state === 'out' && b.st >= 0.45) || (b.state === 'popped' && b.st >= 0.4));
+      if (b.state === 'out') return b.st < 0.45;
+      if (b.state === 'popped') return b.st < 0.4;
+      return !(b.exiting && (b.x < -b.r * 1.2 || b.x > W + b.r * 1.2 || b.y < -b.r * 1.2 || b.y > H + b.r * 1.2));
     });
+    parts.forEach(function (p) { p.age += dt; p.x += p.vx * dt; p.y += p.vy * dt; var d = Math.exp(-dt * 2.5); p.vx *= d; p.vy *= d; });
+    parts = parts.filter(function (p) { return p.age < 0.7; });
     if (!round.done) {
       round.spawnCd -= dt;
-      if (round.spawnCd <= 0) { spawnBall(); round.spawnCd = 0.7 + Math.random() * 1.0; }
+      if (round.spawnCd <= 0) { spawnBall(); round.spawnCd = rnd(0.7, 1.7); }
+      if (round.idle > 8) {   // nobody has touched anything for a while: one ball makes a show of itself
+        var live = round.balls.filter(function (b) { return isLive(b) && !b.exiting && b.mv !== 'enter'; });
+        if (live.length) {
+          var o = live[Math.floor(Math.random() * live.length)];
+          dash(o, Math.atan2(H / 2 - o.y, W / 2 - o.x) + rnd(-0.5, 0.5), LIV[3].dash[1] * k, 0.6);
+          snd('chirp');
+        }
+        round.idle = 4;
+      }
     }
   }
 
-  function eob(p) { var c1 = 1.70158, c3 = c1 + 1, q = p - 1; return 1 + c3 * q * q * q + c1 * q * q; }
   function drawBalls() {
     if (!round) return;
     round.balls.forEach(function (b) {
-      var s = 1, a = 1, yo = 0, p;
-      if (b.state === 'in') { p = Math.min(1, b.st / 0.6); s = eob(p); a = Math.min(1, p * 2); }
-      else if (b.state === 'idle') { s = 1 + 0.03 * Math.sin(T * 2 + b.ph); yo = Math.sin(T * 1.4 + b.ph) * 4; }
+      var s = 1, a = 1, p;
+      if (b.state === 'idle') { s = 1 + 0.03 * Math.sin(T * 2 + b.ph); }
       else if (b.state === 'out') { p = Math.min(1, b.st / 0.45); s = 1 - p * 0.6; a = 1 - p; }
       else { p = Math.min(1, b.st / 0.4); s = 1 + p * 0.7; a = 1 - p; }
       var c = BALL[b.z], r = b.r;
       ctx.save();
       ctx.globalAlpha = Math.max(0, a);
-      ctx.translate(b.x, b.y + yo); ctx.scale(Math.max(0.01, s), Math.max(0.01, s));
+      ctx.translate(b.x + b.twx, b.y + b.twy); ctx.scale(Math.max(0.01, s), Math.max(0.01, s));
       var gl = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 1.9);
       gl.addColorStop(0, 'rgba(' + c.glow.join(',') + ',0.30)'); gl.addColorStop(1, 'rgba(' + c.glow.join(',') + ',0)');
       ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, r * 1.9, 0, Math.PI * 2); ctx.fill();
@@ -421,6 +536,32 @@
       ctx.fillStyle = c.text; ctx.fillText(String(b.n), 0, r * 0.05);
       ctx.restore();
     });
+    parts.forEach(function (q) {
+      ctx.globalAlpha = Math.max(0, 1 - q.age / 0.7);
+      ctx.fillStyle = 'rgb(' + q.c + ')';
+      ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function splash(b) {
+    for (var i = 0; i < 10; i++) {
+      var ang = (i / 10) * Math.PI * 2 + Math.random() * 0.5, sp = rnd(60, 140) * sc();
+      parts.push({ x: b.x, y: b.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, age: 0, r: rnd(2, 4.5), c: BALL[b.z].glow.join(',') });
+    }
+    if (parts.length > 80) parts.splice(0, parts.length - 80);
+  }
+  // A near-miss makes nearby balls dodge away, like prey startled by a paw
+  function nudgeNear(x, y) {
+    if (!round || round.done) return;
+    round.balls.forEach(function (b) {
+      if (!isLive(b) || b.exiting || b.mv === 'enter' || b.cd > 0) return;
+      var d = Math.hypot(b.x - x, b.y - y);
+      if (d > b.r * 1.45 && d < b.r * 3.4) {
+        b.cd = 0.9;
+        dash(b, Math.atan2(b.y - y, b.x - x) + rnd(-0.3, 0.3), LIV[cfg.lively].dash[1] * 1.1 * sc(), 0.45);
+      }
+    });
   }
 
   function tryPick(x, y) {
@@ -428,10 +569,11 @@
     for (var i = round.balls.length - 1; i >= 0; i--) {
       var b = round.balls[i];
       if (!isLive(b)) continue;
-      if (Math.hypot(b.x - x, b.y - y) <= b.r * 1.3) {
+      if (Math.hypot(b.x - x, b.y - y) <= b.r * 1.45) {
         b.state = 'popped'; b.st = 0;
         round.picks[b.z].push(b.n);
-        addRipple(b.x, b.y);
+        round.idle = 0;
+        addRipple(b.x, b.y); splash(b); snd('catch');
         if (isZoneDone(b.z)) round.balls.forEach(function (o) { if (o.z === b.z && isLive(o)) { o.state = 'out'; o.st = 0; } });
         renderHud();
         if (zonesActive().every(isZoneDone)) finishRound();
@@ -463,6 +605,7 @@
     round.entry = entry;
     var h = loadHist(); h.unshift(entry); store('catCalm.hist', h.slice(0, 20));
     var r = round;
+    setTimeout(function () { snd('done'); }, 300);
     setTimeout(function () { if (round === r) showResult(); }, 1200);
   }
   function showResult() {
@@ -522,11 +665,20 @@
   }
   requestAnimationFrame(frame);
 
-  // Paw touch: in Lotto, touching a ball saves its number; elsewhere on the water it only makes a soft ripple
+  // Paw touch: in Lotto, touching a ball catches it; a near-miss startles nearby balls; elsewhere on the water it only makes a ripple
   cv.addEventListener('pointerdown', function (e) {
+    audioInit();
     if (ended) return;
-    if (mode === 'lotto') { if (!tryPick(e.clientX, e.clientY)) addRipple(e.clientX, e.clientY); }
-    else if (mode === 'ripples') addRipple(e.clientX, e.clientY);
+    if (mode === 'lotto') {
+      if (round) round.idle = 0;
+      if (!tryPick(e.clientX, e.clientY)) { addRipple(e.clientX, e.clientY); nudgeNear(e.clientX, e.clientY); }
+    } else if (mode === 'ripples') addRipple(e.clientX, e.clientY);
+  });
+  // A paw sliding across the screen can catch or startle too
+  cv.addEventListener('pointermove', function (e) {
+    if (ended || mode !== 'lotto' || !round || !e.buttons) return;
+    round.idle = 0;
+    if (!tryPick(e.clientX, e.clientY)) nudgeNear(e.clientX, e.clientY);
   });
 
   // ---------- Settings panel (long-press the dot to open, so cats do not trigger it)
@@ -561,6 +713,7 @@
     });
   }
   pick('modes', 'data-m', function (m) { mode = m; $('lotto-cfg').style.display = m === 'lotto' ? 'block' : 'none'; });
+  pick('lively', 'data-l', function (v) { cfg.lively = +v; });
   var minutes = 0;
   pick('timers', 'data-t', function (t) { minutes = +t; });
 
@@ -574,6 +727,7 @@
   });
 
   $('go').addEventListener('click', function () {
+    audioInit();
     closePanel();
     clearTimeout(timerId);
     fade.style.transition = 'opacity .5s'; fade.style.opacity = 0; ended = false;
