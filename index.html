@@ -7,13 +7,15 @@
 <style>
   html, body { margin: 0; height: 100%; background: #070b14; overflow: hidden; overscroll-behavior: none; }
   body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; font-family: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; color: #dbe7f5; }
+  input { -webkit-user-select: text; user-select: text; }
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
-  #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 8s ease; }
-  #gear { position: fixed; right: 10px; bottom: 10px; width: 52px; height: 52px; border-radius: 50%; border: 0; background: rgba(255,255,255,.06); color: rgba(255,255,255,.35); font-size: 22px; touch-action: none; }
-  #hint { position: fixed; left: 0; right: 0; bottom: 70px; text-align: center; font-size: 13px; color: rgba(255,255,255,.35); transition: opacity 2s; pointer-events: none; }
-  #panel { position: fixed; inset: 0; background: rgba(5,8,16,.92); display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+  #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 8s ease; z-index: 45; }
+  #gear { position: fixed; right: 10px; bottom: 10px; width: 52px; height: 52px; border-radius: 50%; border: 0; background: rgba(255,255,255,.06); color: rgba(255,255,255,.35); font-size: 22px; touch-action: none; z-index: 46; }
+  #hint { position: fixed; left: 0; right: 0; bottom: 70px; text-align: center; font-size: 13px; color: rgba(255,255,255,.35); transition: opacity 2s; pointer-events: none; z-index: 10; }
+
+  #panel { position: fixed; inset: 0; background: rgba(5,8,16,.92); display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; z-index: 47; }
   #panel.open { display: flex; }
-  .card { width: min(420px, 100%); background: #111a2b; border-radius: 16px; padding: 20px; box-sizing: border-box; }
+  .card { width: min(420px, 100%); max-height: 100%; overflow-y: auto; background: #111a2b; border-radius: 16px; padding: 20px; box-sizing: border-box; }
   h1 { font-size: 18px; margin: 0 0 4px; }
   p.sub { margin: 0 0 16px; font-size: 13px; color: #8fa3bd; line-height: 1.5; }
   .row { margin: 14px 0; }
@@ -25,13 +27,63 @@
   .actions { display: flex; gap: 8px; margin-top: 18px; }
   .actions button { flex: 1; padding: 12px; border-radius: 10px; border: 0; font-size: 15px; background: #2a3a55; color: #fff; }
   .actions button.primary { background: #3a8bb0; }
+
+  #lotto-cfg { display: none; border-top: 1px solid #22314a; margin-top: 14px; padding-top: 4px; }
+  .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .nums span { display: block; font-size: 11px; color: #6f86a6; margin-bottom: 3px; }
+  .nums input[type=number] { width: 100%; box-sizing: border-box; padding: 8px; font-size: 16px; border-radius: 8px; border: 1px solid #2a3a55; background: #16233a; color: #dbe7f5; }
+  .check { display: flex !important; align-items: center; gap: 8px; color: #dbe7f5 !important; }
+  .check input { width: 18px; height: 18px; }
+  .note { font-size: 12px; color: #6f86a6; line-height: 1.5; }
+  .small { padding: 6px 10px; border-radius: 8px; border: 1px solid #2a3a55; background: #16233a; color: #dbe7f5; font-size: 12px; }
+  .histrow { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #1c2940; font-size: 12px; }
+  .histrow .txt { flex: 1; line-height: 1.4; }
+  .histrow .when { color: #6f86a6; display: block; }
+
+  .chip { display: inline-flex; width: 30px; height: 30px; margin: 2px; border-radius: 50%; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; box-sizing: border-box; }
+  .chip.main { background: #2f6fd0; color: #fff; }
+  .chip.sp { background: #e0a030; color: #3a2200; }
+  .chip.empty { background: transparent; border: 1.5px dashed rgba(255,255,255,.25); color: transparent; }
+  .chip.big { width: 50px; height: 50px; font-size: 20px; margin: 4px; }
+
+  #hud { position: fixed; left: 0; right: 0; top: 8px; text-align: center; pointer-events: none; display: none; z-index: 10; }
+  #hud .lab { font-size: 11px; color: rgba(255,255,255,.4); margin-right: 6px; text-transform: uppercase; letter-spacing: .06em; }
+
+  #result { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; background: rgba(5,8,16,.9); text-align: center; padding: 20px; box-sizing: border-box; z-index: 20; }
+  #result h2 { margin: 0 0 14px; font-size: 20px; }
+  #result .lab { font-size: 12px; color: #8fa3bd; margin: 12px 0 2px; text-transform: uppercase; letter-spacing: .06em; }
+  #result .when { font-size: 12px; color: #6f86a6; margin-top: 14px; }
+  #result .btns { display: flex; gap: 10px; margin-top: 22px; }
+  #result .btns button { position: relative; overflow: hidden; padding: 12px 20px; border-radius: 10px; border: 0; font-size: 15px; color: #fff; background: #2a3a55; }
+  .hold::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(255,255,255,.25); transition: width .2s; }
+  .hold.holding::after { width: 100%; transition: width .9s linear; }
+
+  #toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: rgba(20,30,50,.95); color: #fff; padding: 8px 14px; border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 48; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="hud"><div id="hud-main"></div><div id="hud-sp"></div></div>
 <div id="fade"></div>
 <div id="hint">Long-press the dot at the bottom right for 1 second to open settings</div>
+
+<div id="result">
+  <h2>Your cat's numbers</h2>
+  <div class="lab">Main</div>
+  <div id="res-main"></div>
+  <div id="res-sp-wrap">
+    <div class="lab">Special</div>
+    <div id="res-sp"></div>
+  </div>
+  <div class="when" id="res-when"></div>
+  <div class="btns">
+    <button id="res-copy">Copy</button>
+    <button id="res-new" class="hold">New round (hold)</button>
+  </div>
+</div>
+
 <button id="gear" aria-label="Settings (long-press)">⚙</button>
+<div id="toast"></div>
 
 <div id="panel">
   <div class="card">
@@ -43,8 +95,46 @@
         <button data-m="orbs" class="on">Glow</button>
         <button data-m="ripples">Ripples</button>
         <button data-m="aurora">Aurora</button>
+        <button data-m="lotto">Lotto</button>
       </div>
     </div>
+
+    <div id="lotto-cfg">
+      <div class="row">
+        <label>Presets</label>
+        <div class="seg" id="presets">
+          <button data-p="super">Taiwan Super Lotto</button>
+          <button data-p="649">Lotto 6/49</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>Main zone: number range and how many to pick</label>
+        <div class="nums">
+          <div><span>From</span><input type="number" id="lm-min" inputmode="numeric" min="1" max="99"></div>
+          <div><span>To</span><input type="number" id="lm-max" inputmode="numeric" min="1" max="99"></div>
+          <div><span>Pick</span><input type="number" id="lm-count" inputmode="numeric" min="1" max="99"></div>
+        </div>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="ls-on"> Second zone (e.g. the Super Lotto special number)</label>
+        <div class="nums">
+          <div><span>From</span><input type="number" id="ls-min" inputmode="numeric" min="1" max="99"></div>
+          <div><span>To</span><input type="number" id="ls-max" inputmode="numeric" min="1" max="99"></div>
+          <div><span>Pick</span><input type="number" id="ls-count" inputmode="numeric" min="1" max="99"></div>
+        </div>
+      </div>
+      <div class="row">
+        <label>Balls on screen<span id="obv"></span></label>
+        <input type="range" id="onscreen" min="3" max="12" step="1" value="6">
+      </div>
+      <p class="note">Main-zone balls are blue and second-zone balls are amber. Balls pop up at random and drift slowly; whichever one your cat touches is saved. For fun only: random picks don't change any odds.</p>
+      <div class="row">
+        <label>History</label>
+        <div id="hist"></div>
+        <button class="small" id="hclear">Clear history</button>
+      </div>
+    </div>
+
     <div class="row">
       <label>Speed (slower is calmer)<span id="spv"></span></label>
       <input type="range" id="speed" min="0.3" max="2" step="0.1" value="1">
@@ -74,6 +164,10 @@
   var ripples = [], nextRipple = 1.5;
   var timerId = null, ended = false;
 
+  function $(id) { return document.getElementById(id); }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
   function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     W = window.innerWidth; H = window.innerHeight;
@@ -83,7 +177,7 @@
   window.addEventListener('resize', resize);
   resize();
 
-  // Glow: large, soft orbs drifting slowly and smoothly; visible to cats but with no sudden, prey-like movement
+  // ---------- Glow: large, soft orbs drifting slowly and smoothly; visible to cats but with no sudden, prey-like movement
   var cols = [[70,190,185],[240,205,120],[90,140,230],[120,210,150],[70,190,185],[240,205,120],[90,140,230]];
   var orbs = cols.map(function (c, i) {
     return { c: c, fx: 0.12 + (i * 0.037) % 0.14, fy: 0.10 + (i * 0.051) % 0.13,
@@ -106,7 +200,7 @@
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  // Ripples: only expanding rings, nothing to catch
+  // ---------- Ripples: only expanding rings, nothing to catch (also the water behind the Lotto balls)
   function addRipple(x, y) { ripples.push({ x: x, y: y, age: 0 }); if (ripples.length > 14) ripples.shift(); }
   function drawRipples(dt) {
     var g = ctx.createLinearGradient(0, 0, 0, H);
@@ -131,7 +225,7 @@
     }
   }
 
-  // Aurora: a few slowly undulating ribbons
+  // ---------- Aurora: a few slowly undulating ribbons
   var bands = [[70,200,170],[90,150,230],[200,210,120],[110,200,200]];
   function drawAurora() {
     ctx.fillStyle = '#070b14'; ctx.fillRect(0, 0, W, H);
@@ -154,66 +248,337 @@
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  // ---------- Lotto: numbered balls pop up on the water; the one a cat touches is saved
+  var cfg = { main: { min: 1, max: 38, count: 6 }, sp: { on: true, min: 1, max: 8, count: 1 }, onscreen: 6 };
+  var round = null;   // { picks: {main: [], sp: []}, balls: [], spawnCd: n, done: bool, entry: obj }
+  var BALL = {
+    main: { hi: [160, 205, 255], lo: [30, 80, 190], glow: [90, 150, 255], text: '#ffffff' },
+    sp:   { hi: [255, 228, 150], lo: [205, 110, 15], glow: [255, 190, 80], text: '#3a2200' }
+  };
+
+  function store(key, val) { try { if (val === undefined) { var s = localStorage.getItem(key); return s ? JSON.parse(s) : null; } localStorage.setItem(key, JSON.stringify(val)); } catch (e) { return null; } }
+
+  function clampZone(min, max, count) {
+    min = clamp(isNaN(min) ? 1 : min, 1, 99); max = clamp(isNaN(max) ? 1 : max, 1, 99);
+    if (min > max) { var t = min; min = max; max = t; }
+    count = clamp(isNaN(count) ? 1 : count, 1, max - min + 1);
+    return { min: min, max: max, count: count };
+  }
+  function num(id) { return parseInt($(id).value, 10); }
+  function writeCfg() {
+    $('lm-min').value = cfg.main.min; $('lm-max').value = cfg.main.max; $('lm-count').value = cfg.main.count;
+    $('ls-on').checked = cfg.sp.on;
+    $('ls-min').value = cfg.sp.min; $('ls-max').value = cfg.sp.max; $('ls-count').value = cfg.sp.count;
+    $('onscreen').value = cfg.onscreen; showOb();
+  }
+  function readCfg() {
+    var m = clampZone(num('lm-min'), num('lm-max'), num('lm-count'));
+    var s = clampZone(num('ls-min'), num('ls-max'), num('ls-count'));
+    cfg.main = m;
+    cfg.sp = { on: $('ls-on').checked, min: s.min, max: s.max, count: s.count };
+    cfg.onscreen = clamp(parseInt($('onscreen').value, 10) || 6, 3, 12);
+    writeCfg();
+    store('catCalm.cfg', cfg);
+  }
+  function showOb() { $('obv').textContent = ': ' + $('onscreen').value; }
+  $('onscreen').addEventListener('input', showOb);
+
+  var saved = store('catCalm.cfg');
+  if (saved && saved.main && saved.sp) { cfg = saved; cfg.main = clampZone(cfg.main.min, cfg.main.max, cfg.main.count); var sz = clampZone(cfg.sp.min, cfg.sp.max, cfg.sp.count); cfg.sp = { on: !!cfg.sp.on, min: sz.min, max: sz.max, count: sz.count }; cfg.onscreen = clamp(cfg.onscreen || 6, 3, 12); }
+  writeCfg();
+
+  $('presets').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.getAttribute('data-p') === 'super') {
+      cfg.main = { min: 1, max: 38, count: 6 }; cfg.sp = { on: true, min: 1, max: 8, count: 1 };
+    } else {
+      cfg.main = { min: 1, max: 49, count: 6 }; cfg.sp = { on: false, min: cfg.sp.min, max: cfg.sp.max, count: cfg.sp.count };
+    }
+    writeCfg();
+  });
+
+  var hud = $('hud'), hudMain = $('hud-main'), hudSp = $('hud-sp');
+  function zoneCfg(z) { return z === 'main' ? cfg.main : cfg.sp; }
+  function zonesActive() { return cfg.sp.on ? ['main', 'sp'] : ['main']; }
+  function isZoneDone(z) { return round.picks[z].length >= zoneCfg(z).count; }
+  function isLive(b) { return b.state === 'in' || b.state === 'idle'; }
+  function liveCount(z) { return round.balls.filter(function (b) { return b.z === z && isLive(b); }).length; }
+
+  function renderHud() {
+    hud.style.display = (mode === 'lotto' && round) ? 'block' : 'none';
+    if (!round) return;
+    fillHud('main', hudMain, 'Main');
+    if (cfg.sp.on) { hudSp.style.display = 'block'; fillHud('sp', hudSp, 'Special'); } else { hudSp.style.display = 'none'; }
+  }
+  function fillHud(z, el, label) {
+    el.innerHTML = '';
+    var lab = document.createElement('span'); lab.className = 'lab'; lab.textContent = label; el.appendChild(lab);
+    for (var i = 0; i < zoneCfg(z).count; i++) {
+      var c = document.createElement('span');
+      var n = round.picks[z][i];
+      c.className = 'chip ' + (n !== undefined ? z : 'empty');
+      c.textContent = n !== undefined ? pad(n) : '0';
+      el.appendChild(c);
+    }
+  }
+
+  function startRound() {
+    hideResult();
+    round = { picks: { main: [], sp: [] }, balls: [], spawnCd: 0.3, done: false, entry: null };
+    renderHud();
+  }
+
+  function ballRadius() { return Math.max(30, Math.min(58, Math.min(W, H) * 0.075)); }
+  function zoneCap(z) {
+    var both = cfg.sp.on && !isZoneDone('sp') && !isZoneDone('main');
+    if (!both) return cfg.onscreen;
+    var spCap = Math.max(1, Math.round(cfg.onscreen * 0.3));
+    return z === 'sp' ? spCap : Math.max(1, cfg.onscreen - spCap);
+  }
+  function available(z) {
+    var c = zoneCfg(z), out = [];
+    var taken = {};
+    round.picks[z].forEach(function (n) { taken[n] = 1; });
+    round.balls.forEach(function (b) { if (b.z === z && isLive(b)) taken[b.n] = 1; });
+    for (var n = c.min; n <= c.max; n++) if (!taken[n]) out.push(n);
+    return out;
+  }
+  function findPos(r) {
+    var top = 70 + r, bottom = H - 80 - r;
+    if (bottom < top) { top = H * 0.3; bottom = H * 0.7; }
+    var left = r, right = W - r; if (right < left) { left = W * 0.3; right = W * 0.7; }
+    var best = null;
+    for (var t = 0; t < 14; t++) {
+      var x = left + Math.random() * (right - left), y = top + Math.random() * (bottom - top), ok = true;
+      for (var i = 0; i < round.balls.length; i++) {
+        var b = round.balls[i]; if (!isLive(b)) continue;
+        if (Math.hypot(b.x - x, b.y - y) < r * 2.3) { ok = false; break; }
+      }
+      if (ok) return { x: x, y: y };
+      if (!best) best = { x: x, y: y };
+    }
+    return best;
+  }
+  function spawnBall() {
+    var zs = zonesActive().filter(function (z) {
+      return !isZoneDone(z) && liveCount(z) < zoneCap(z) && available(z).length > 0;
+    });
+    if (!zs.length) return;
+    var z = zs[0];
+    if (zs.length > 1) { var total = zoneCap('main') + zoneCap('sp'); z = Math.random() * total < zoneCap('main') ? 'main' : 'sp'; }
+    var pool = available(z), n = pool[Math.floor(Math.random() * pool.length)];
+    var r = ballRadius(), p = findPos(r), ang = Math.random() * Math.PI * 2, sp = 18 + Math.random() * 16;
+    round.balls.push({ z: z, n: n, x: p.x, y: p.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, r: r,
+                       age: 0, life: 12 + Math.random() * 6, state: 'in', st: 0, ph: Math.random() * 6.28 });
+    addRipple(p.x, p.y);
+  }
+
+  function updateBalls(dt) {
+    if (!round) return;
+    round.balls.forEach(function (b) {
+      b.age += dt; b.st += dt;
+      if (b.state === 'in' || b.state === 'idle') {
+        b.x += b.vx * dt; b.y += b.vy * dt;
+        if ((b.x < b.r && b.vx < 0) || (b.x > W - b.r && b.vx > 0)) b.vx = -b.vx;
+        if ((b.y < 70 + b.r * 0.5 && b.vy < 0) || (b.y > H - 80 && b.vy > 0)) b.vy = -b.vy;
+        if (b.state === 'in' && b.st >= 0.6) { b.state = 'idle'; b.st = 0; }
+        else if (b.state === 'idle' && b.age > b.life) { b.state = 'out'; b.st = 0; }
+      }
+    });
+    round.balls = round.balls.filter(function (b) {
+      return !((b.state === 'out' && b.st >= 0.45) || (b.state === 'popped' && b.st >= 0.4));
+    });
+    if (!round.done) {
+      round.spawnCd -= dt;
+      if (round.spawnCd <= 0) { spawnBall(); round.spawnCd = 0.7 + Math.random() * 1.0; }
+    }
+  }
+
+  function eob(p) { var c1 = 1.70158, c3 = c1 + 1, q = p - 1; return 1 + c3 * q * q * q + c1 * q * q; }
+  function drawBalls() {
+    if (!round) return;
+    round.balls.forEach(function (b) {
+      var s = 1, a = 1, yo = 0, p;
+      if (b.state === 'in') { p = Math.min(1, b.st / 0.6); s = eob(p); a = Math.min(1, p * 2); }
+      else if (b.state === 'idle') { s = 1 + 0.03 * Math.sin(T * 2 + b.ph); yo = Math.sin(T * 1.4 + b.ph) * 4; }
+      else if (b.state === 'out') { p = Math.min(1, b.st / 0.45); s = 1 - p * 0.6; a = 1 - p; }
+      else { p = Math.min(1, b.st / 0.4); s = 1 + p * 0.7; a = 1 - p; }
+      var c = BALL[b.z], r = b.r;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, a);
+      ctx.translate(b.x, b.y + yo); ctx.scale(Math.max(0.01, s), Math.max(0.01, s));
+      var gl = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 1.9);
+      gl.addColorStop(0, 'rgba(' + c.glow.join(',') + ',0.30)'); gl.addColorStop(1, 'rgba(' + c.glow.join(',') + ',0)');
+      ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, r * 1.9, 0, Math.PI * 2); ctx.fill();
+      var g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r);
+      g.addColorStop(0, 'rgb(' + c.hi.join(',') + ')'); g.addColorStop(1, 'rgb(' + c.lo.join(',') + ')');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath(); ctx.ellipse(-r * 0.35, -r * 0.5, r * 0.3, r * 0.15, -0.6, 0, Math.PI * 2); ctx.fill();
+      ctx.font = '700 ' + Math.round(r * 0.9) + 'px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 4;
+      ctx.fillStyle = c.text; ctx.fillText(String(b.n), 0, r * 0.05);
+      ctx.restore();
+    });
+  }
+
+  function tryPick(x, y) {
+    if (!round || round.done) return false;
+    for (var i = round.balls.length - 1; i >= 0; i--) {
+      var b = round.balls[i];
+      if (!isLive(b)) continue;
+      if (Math.hypot(b.x - x, b.y - y) <= b.r * 1.3) {
+        b.state = 'popped'; b.st = 0;
+        round.picks[b.z].push(b.n);
+        addRipple(b.x, b.y);
+        if (isZoneDone(b.z)) round.balls.forEach(function (o) { if (o.z === b.z && isLive(o)) { o.state = 'out'; o.st = 0; } });
+        renderHud();
+        if (zonesActive().every(isZoneDone)) finishRound();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // ---------- Results and history
+  function sorted(a) { return a.slice().sort(function (x, y) { return x - y; }); }
+  function formatEntry(e) {
+    var t = 'Main: ' + sorted(e.main).map(pad).join(' ');
+    if (e.sp && e.sp.length) t += ' | Special: ' + sorted(e.sp).map(pad).join(' ');
+    return t;
+  }
+  function whenText(ts) {
+    try { return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
+  }
+  function loadHist() { var h = store('catCalm.hist'); return Array.isArray(h) ? h : []; }
+  function chips(el, arr, cls) {
+    el.innerHTML = '';
+    sorted(arr).forEach(function (n) { var c = document.createElement('span'); c.className = 'chip big ' + cls; c.textContent = pad(n); el.appendChild(c); });
+  }
+
+  function finishRound() {
+    round.done = true;
+    var entry = { t: Date.now(), main: round.picks.main.slice(), sp: cfg.sp.on ? round.picks.sp.slice() : [] };
+    round.entry = entry;
+    var h = loadHist(); h.unshift(entry); store('catCalm.hist', h.slice(0, 20));
+    var r = round;
+    setTimeout(function () { if (round === r) showResult(); }, 1200);
+  }
+  function showResult() {
+    var e = round.entry;
+    chips($('res-main'), e.main, 'main');
+    $('res-sp-wrap').style.display = e.sp.length ? 'block' : 'none';
+    chips($('res-sp'), e.sp, 'sp');
+    $('res-when').textContent = whenText(e.t);
+    $('result').style.display = 'flex';
+  }
+  function hideResult() { $('result').style.display = 'none'; }
+
+  var toastT = null;
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.style.opacity = 1;
+    clearTimeout(toastT); toastT = setTimeout(function () { t.style.opacity = 0; }, 1600);
+  }
+  function copyText(txt) {
+    function fallback() {
+      try {
+        var ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = 0;
+        document.body.appendChild(ta); ta.select();
+        var ok = document.execCommand('copy'); document.body.removeChild(ta);
+        toast(ok ? 'Copied' : 'Copy failed');
+      } catch (e) { toast('Copy failed'); }
+    }
+    try { navigator.clipboard.writeText(txt).then(function () { toast('Copied'); }, fallback); } catch (e) { fallback(); }
+  }
+  $('res-copy').addEventListener('click', function () { if (round && round.entry) copyText(formatEntry(round.entry)); });
+
+  function renderHist() {
+    var box = $('hist'); box.innerHTML = '';
+    var h = loadHist();
+    if (!h.length) { var p = document.createElement('div'); p.className = 'note'; p.textContent = 'No saved rounds yet.'; box.appendChild(p); return; }
+    h.slice(0, 10).forEach(function (e) {
+      var row = document.createElement('div'); row.className = 'histrow';
+      var txt = document.createElement('div'); txt.className = 'txt';
+      var w = document.createElement('span'); w.className = 'when'; w.textContent = whenText(e.t);
+      txt.appendChild(w); txt.appendChild(document.createTextNode(formatEntry(e)));
+      var b = document.createElement('button'); b.className = 'small'; b.textContent = 'Copy';
+      b.addEventListener('click', function () { copyText(formatEntry(e)); });
+      row.appendChild(txt); row.appendChild(b); box.appendChild(row);
+    });
+  }
+  $('hclear').addEventListener('click', function () { store('catCalm.hist', []); renderHist(); });
+
+  // ---------- Main loop
   function frame(ts) {
     var dt = last ? Math.min((ts - last) / 1000, 0.1) : 0;
     last = ts;
     dt *= speed; T += dt;
     if (mode === 'orbs') drawOrbs();
     else if (mode === 'ripples') drawRipples(dt);
+    else if (mode === 'lotto') { drawRipples(dt); updateBalls(dt); drawBalls(); }
     else drawAurora();
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 
-  // Paw touch: only spawns a soft ripple in the Ripples scene; nothing can be "caught"
+  // Paw touch: in Lotto, touching a ball saves its number; elsewhere on the water it only makes a soft ripple
   cv.addEventListener('pointerdown', function (e) {
     if (ended) return;
-    if (mode === 'ripples') addRipple(e.clientX, e.clientY);
+    if (mode === 'lotto') { if (!tryPick(e.clientX, e.clientY)) addRipple(e.clientX, e.clientY); }
+    else if (mode === 'ripples') addRipple(e.clientX, e.clientY);
   });
 
-  // Settings panel (long-press the dot to open, so cats do not trigger it)
-  var panel = document.getElementById('panel');
-  var gear = document.getElementById('gear');
-  var hint = document.getElementById('hint');
-  var fade = document.getElementById('fade');
-  var pressT = null;
-  gear.addEventListener('pointerdown', function () { pressT = setTimeout(openPanel, 1000); });
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) {
-    gear.addEventListener(ev, function () { clearTimeout(pressT); });
-  });
+  // ---------- Settings panel (long-press the dot to open, so cats do not trigger it)
+  var panel = $('panel'), gear = $('gear'), hint = $('hint'), fade = $('fade');
+
+  function holdButton(el, ms, fn) {
+    var t = null;
+    function cancel() { clearTimeout(t); t = null; el.classList.remove('holding'); }
+    el.addEventListener('pointerdown', function () {
+      el.classList.add('holding');
+      t = setTimeout(function () { t = null; el.classList.remove('holding'); fn(); }, ms);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { el.addEventListener(ev, cancel); });
+  }
+  holdButton(gear, 1000, openPanel);
+  holdButton($('res-new'), 900, startRound);
   setTimeout(function () { hint.style.opacity = 0; }, 8000);
 
   function openPanel() {
+    renderHist();
     panel.classList.add('open');
     if (ended) { ended = false; fade.style.transition = 'opacity .5s'; fade.style.opacity = 0; }
   }
   function closePanel() { panel.classList.remove('open'); }
 
   function pick(groupId, attr, cb) {
-    var g = document.getElementById(groupId);
+    var g = $(groupId);
     g.addEventListener('click', function (e) {
       var b = e.target.closest('button'); if (!b) return;
       g.querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); });
       b.classList.add('on'); cb(b.getAttribute(attr));
     });
   }
-  pick('modes', 'data-m', function (m) { mode = m; });
+  pick('modes', 'data-m', function (m) { mode = m; $('lotto-cfg').style.display = m === 'lotto' ? 'block' : 'none'; });
   var minutes = 0;
   pick('timers', 'data-t', function (t) { minutes = +t; });
 
-  var sp = document.getElementById('speed'), spv = document.getElementById('spv');
+  var sp = $('speed'), spv = $('spv');
   function showSp() { spv.textContent = ': ' + speed.toFixed(1) + '×'; }
   sp.addEventListener('input', function () { speed = +sp.value; showSp(); });
   showSp();
 
-  document.getElementById('fs').addEventListener('click', function () {
+  $('fs').addEventListener('click', function () {
     try { var p = document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
   });
 
-  document.getElementById('go').addEventListener('click', function () {
+  $('go').addEventListener('click', function () {
     closePanel();
     clearTimeout(timerId);
     fade.style.transition = 'opacity .5s'; fade.style.opacity = 0; ended = false;
+    if (mode === 'lotto') { readCfg(); startRound(); }
+    else { round = null; hideResult(); renderHud(); }
     if (minutes > 0) {
       timerId = setTimeout(function () {
         ended = true; fade.style.transition = 'opacity 8s ease'; fade.style.opacity = 1;
