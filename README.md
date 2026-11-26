@@ -5,7 +5,8 @@ A web page of soft, slow, smooth light and motion for cats to watch. Cats stay c
 - Four scenes: Glow, Ripples, Aurora, and Lotto
 - **Lotto (cat number picker):** numbered balls sneak onto a water background and the cat catches them. Whichever ball the cat touches is saved.
   - Prey-like behavior: balls creep in from the screen edges, freeze and twitch, dash, creep, dodge near-misses and slips away if ignored; if nothing is touched for a while, one ball makes a show of itself
-  - Shape setting: small birds (default) that flap while flying and show legs on the ground, or plain balls; the number is printed on the body and the two zones differ only by color
+  - Shape setting: a feather-wand toy (default; a fan of feathers on a short string that trails behind its movement), small birds that flap while flying and show legs on the ground, or plain balls; the number is printed on the body and the two zones differ only by color
+  - Size setting (Medium / Large / Huge) for cats that don't notice small targets
   - Liveliness setting (Gentle / Playful / Lively) and synthesized sound effects (chirps, squeaks, rustles; adjustable volume)
   - Catching a ball gives a squeak, a splash and a ripple
   - Set the number range and how many numbers to pick

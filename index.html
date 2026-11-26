@@ -132,8 +132,17 @@
       <div class="row">
         <label>Shape</label>
         <div class="seg" id="shape">
-          <button data-s="bird" class="on">Bird</button>
+          <button data-s="feather" class="on">Feather</button>
+          <button data-s="bird">Bird</button>
           <button data-s="ball">Ball</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>Size</label>
+        <div class="seg" id="size">
+          <button data-z="1">Medium</button>
+          <button data-z="2" class="on">Large</button>
+          <button data-z="3">Huge</button>
         </div>
       </div>
       <div class="row">
@@ -270,7 +279,7 @@
   }
 
   // ---------- Lotto: numbered balls pop up on the water; the one a cat touches is saved
-  var cfg = { main: { min: 1, max: 38, count: 6 }, sp: { on: true, min: 1, max: 8, count: 1 }, onscreen: 6, lively: 2, vol: 50, shape: 'bird' };
+  var cfg = { main: { min: 1, max: 38, count: 6 }, sp: { on: true, min: 1, max: 8, count: 1 }, onscreen: 6, lively: 2, vol: 50, shape: 'feather', size: 2 };
   var round = null;   // { picks: {main: [], sp: []}, balls: [], spawnCd: n, done: bool, entry: obj }
   var BALL = {
     main: { hi: [160, 205, 255], lo: [30, 80, 190], glow: [90, 150, 255], text: '#ffffff' },
@@ -290,7 +299,7 @@
     $('lm-min').value = cfg.main.min; $('lm-max').value = cfg.main.max; $('lm-count').value = cfg.main.count;
     $('ls-on').checked = cfg.sp.on;
     $('ls-min').value = cfg.sp.min; $('ls-max').value = cfg.sp.max; $('ls-count').value = cfg.sp.count;
-    $('onscreen').value = cfg.onscreen; showOb(); setLively(); setShape(); $('vol').value = cfg.vol; showVol();
+    $('onscreen').value = cfg.onscreen; showOb(); setLively(); setShape(); setSize(); $('vol').value = cfg.vol; showVol();
   }
   function readCfg() {
     var m = clampZone(num('lm-min'), num('lm-max'), num('lm-count'));
@@ -306,11 +315,12 @@
   $('onscreen').addEventListener('input', showOb);
   function setLively() { $('lively').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-l') === cfg.lively); }); }
   function setShape() { $('shape').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-s') === cfg.shape); }); }
+  function setSize() { $('size').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-z') === cfg.size); }); }
   function showVol() { $('volv').textContent = ': ' + (cfg.vol > 0 ? cfg.vol + '%' : 'off'); }
   $('vol').addEventListener('input', function () { cfg.vol = clamp(parseInt($('vol').value, 10) || 0, 0, 100); applyVol(); showVol(); });
 
   var saved = store('catCalm.cfg');
-  if (saved && saved.main && saved.sp) { cfg = saved; cfg.main = clampZone(cfg.main.min, cfg.main.max, cfg.main.count); var sz = clampZone(cfg.sp.min, cfg.sp.max, cfg.sp.count); cfg.sp = { on: !!cfg.sp.on, min: sz.min, max: sz.max, count: sz.count }; cfg.onscreen = clamp(cfg.onscreen || 6, 3, 12); cfg.lively = clamp(cfg.lively || 2, 1, 3); cfg.vol = typeof cfg.vol === 'number' ? clamp(cfg.vol, 0, 100) : 50; cfg.shape = cfg.shape === 'ball' ? 'ball' : 'bird'; }
+  if (saved && saved.main && saved.sp) { cfg = saved; cfg.main = clampZone(cfg.main.min, cfg.main.max, cfg.main.count); var sz = clampZone(cfg.sp.min, cfg.sp.max, cfg.sp.count); cfg.sp = { on: !!cfg.sp.on, min: sz.min, max: sz.max, count: sz.count }; cfg.onscreen = clamp(cfg.onscreen || 6, 3, 12); cfg.lively = clamp(cfg.lively || 2, 1, 3); cfg.vol = typeof cfg.vol === 'number' ? clamp(cfg.vol, 0, 100) : 50; cfg.shape = (cfg.shape === 'ball' || cfg.shape === 'bird') ? cfg.shape : 'feather'; cfg.size = clamp(cfg.size || 2, 1, 3); }
   writeCfg();
 
   $('presets').addEventListener('click', function (e) {
@@ -403,7 +413,11 @@
   ];
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function sc() { return clamp(Math.min(W, H) / 600, 0.7, 1.6); }
-  function ballRadius() { return Math.max(30, Math.min(58, Math.min(W, H) * 0.075)); }
+  function ballRadius() {
+    var m = Math.min(W, H);
+    return cfg.size === 3 ? clamp(m * 0.17, 64, 140) : cfg.size === 2 ? clamp(m * 0.12, 46, 100) : clamp(m * 0.075, 30, 58);
+  }
+  function hitR(b) { return b.r * (cfg.shape === 'feather' ? 1.9 : cfg.shape === 'bird' ? 1.7 : 1.45); }
   function zoneCap(z) {
     var both = cfg.sp.on && !isZoneDone('sp') && !isZoneDone('main');
     if (!both) return cfg.onscreen;
@@ -465,7 +479,7 @@
     }
     round.balls.push({ z: z, n: n, x: x, y: y, vx: ix * 55 * k, vy: iy * 55 * k, r: r, age: 0, life: rnd(14, 22),
                        state: 'idle', mv: 'enter', pt: 0, pd: 1, st: 0, ph: Math.random() * 6.28,
-                       tw: 0, twx: 0, twy: 0, cd: 0, exiting: false, face: ix !== 0 ? ix : (Math.random() < 0.5 ? 1 : -1) });
+                       tw: 0, twx: 0, twy: 0, cd: 0, exiting: false, fa: Math.random() * 6.28, face: ix !== 0 ? ix : (Math.random() < 0.5 ? 1 : -1) });
     addRipple(clamp(x, 20, W - 20), clamp(y, 20, H - 20));
     snd(Math.random() < 0.5 ? 'chirp' : 'squeak');
   }
@@ -479,6 +493,10 @@
       b.twx *= Math.exp(-dt * 10); b.twy *= Math.exp(-dt * 10);
       if (b.state !== 'idle') return;
       if (Math.abs(b.vx) > 5) b.face = b.vx > 0 ? 1 : -1;
+      if (Math.hypot(b.vx, b.vy) > 5) {   // a feather on a string trails behind the direction of travel
+        var tgt = Math.atan2(-b.vy, -b.vx), da = Math.atan2(Math.sin(tgt - b.fa), Math.cos(tgt - b.fa));
+        b.fa += da * Math.min(1, dt * 7);
+      }
       if (b.exiting) { b.x += b.vx * dt; b.y += b.vy * dt; return; }
       if (b.mv === 'enter') {
         b.x += b.vx * dt; b.y += b.vy * dt;
@@ -550,6 +568,42 @@
     ctx.restore();
   }
 
+  // A feather-wand toy: a fan of three feathers that trails behind the direction of travel, with a short string and bead at the front
+  function drawFeather(c, r, b) {
+    var fly = b.exiting || b.mv === 'dash' || b.mv === 'enter';
+    var sway = fly ? Math.sin(T * 20 + b.ph) * 0.18 : (b.mv === 'creep' ? Math.sin(T * 7 + b.ph) * 0.12 : Math.sin(T * 2.5 + b.ph) * 0.08 + b.twx * 0.03);
+    var L = 3.5 * r, Wd = 0.62 * r, lo = c.lo.join(','), hi = c.hi.join(',');
+    var fan = fly ? 0.34 : 0.26;
+    ctx.save();
+    ctx.rotate(b.fa + sway);
+    ctx.strokeStyle = 'rgba(235,235,235,0.7)'; ctx.lineWidth = Math.max(1.5, r * 0.04);
+    ctx.beginPath(); ctx.moveTo(-L * 0.5, 0); ctx.quadraticCurveTo(-L * 0.5 - r * 0.5, -r * 0.25, -L * 0.5 - r, 0); ctx.stroke();
+    ctx.fillStyle = 'rgb(' + hi + ')'; ctx.beginPath(); ctx.arc(-L * 0.5 - r, 0, r * 0.1, 0, Math.PI * 2); ctx.fill();
+    [[-fan, 0.82, 0.6], [fan, 0.82, 0.6], [0, 1, 1]].forEach(function (f) {
+      ctx.save();
+      ctx.translate(-L / 2, 0); ctx.rotate(f[0]); ctx.scale(f[1], f[1]); ctx.translate(L / 2, 0);
+      var g = ctx.createLinearGradient(-L / 2, 0, L / 2, 0);
+      g.addColorStop(0, 'rgba(' + hi + ',' + f[2] + ')'); g.addColorStop(1, 'rgba(' + lo + ',' + f[2] + ')');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(-L / 2, 0);
+      ctx.quadraticCurveTo(-L * 0.12, -Wd * 1.7, L / 2, 0); ctx.quadraticCurveTo(-L * 0.12, Wd * 1.3, -L / 2, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(' + lo + ',0.6)'; ctx.lineWidth = Math.max(1, r * 0.025);
+      ctx.beginPath();
+      for (var t = 0.2; t < 0.96; t += 0.07) {
+        var x = (1 - t) * (1 - t) * (-L / 2) + 2 * (1 - t) * t * (-L * 0.12) + t * t * (L / 2);
+        var k = 2 * (1 - t) * t;
+        ctx.moveTo(x, 0); ctx.lineTo(x + L * 0.1, -k * Wd * 1.7 * 1.06);
+        ctx.moveTo(x, 0); ctx.lineTo(x + L * 0.1, k * Wd * 1.3 * 1.06);
+      }
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = Math.max(1.5, r * 0.045);
+      ctx.beginPath(); ctx.moveTo(-L / 2, 0); ctx.lineTo(L / 2, 0); ctx.stroke();
+      ctx.restore();
+    });
+    ctx.restore();
+  }
+
   function drawBalls() {
     if (!round) return;
     round.balls.forEach(function (b) {
@@ -564,8 +618,9 @@
       var gl = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 1.9);
       gl.addColorStop(0, 'rgba(' + c.glow.join(',') + ',0.30)'); gl.addColorStop(1, 'rgba(' + c.glow.join(',') + ',0)');
       ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, r * 1.9, 0, Math.PI * 2); ctx.fill();
-      var bird = cfg.shape === 'bird';
-      if (bird) { ctx.scale(0.82, 0.82); drawBird(c, r, b); }
+      var shp = cfg.shape;
+      if (shp === 'bird') { ctx.scale(0.82, 0.82); drawBird(c, r, b); }
+      else if (shp === 'feather') { drawFeather(c, r, b); }
       else {
         var g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r);
         g.addColorStop(0, 'rgb(' + c.hi.join(',') + ')'); g.addColorStop(1, 'rgb(' + c.lo.join(',') + ')');
@@ -573,10 +628,10 @@
         ctx.fillStyle = 'rgba(255,255,255,0.35)';
         ctx.beginPath(); ctx.ellipse(-r * 0.35, -r * 0.5, r * 0.3, r * 0.15, -0.6, 0, Math.PI * 2); ctx.fill();
       }
-      ctx.font = '700 ' + Math.round(r * (bird ? 1.0 : 0.9)) + 'px system-ui, -apple-system, sans-serif';
+      ctx.font = '700 ' + Math.round(r * (shp === 'ball' ? 0.9 : shp === 'bird' ? 1.0 : 0.95)) + 'px system-ui, -apple-system, sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 4;
-      ctx.fillStyle = c.text; ctx.fillText(String(b.n), 0, r * (bird ? 0.12 : 0.05));
+      ctx.fillStyle = c.text; ctx.fillText(String(b.n), 0, r * (shp === 'ball' ? 0.05 : shp === 'bird' ? 0.12 : 0.02));
       ctx.restore();
     });
     parts.forEach(function (q) {
@@ -600,7 +655,7 @@
     round.balls.forEach(function (b) {
       if (!isLive(b) || b.exiting || b.mv === 'enter' || b.cd > 0) return;
       var d = Math.hypot(b.x - x, b.y - y);
-      if (d > b.r * 1.45 && d < b.r * 3.4) {
+      if (d > hitR(b) && d < hitR(b) * 2.4) {
         b.cd = 0.9;
         dash(b, Math.atan2(b.y - y, b.x - x) + rnd(-0.3, 0.3), LIV[cfg.lively].dash[1] * 1.1 * sc(), 0.45);
       }
@@ -612,7 +667,7 @@
     for (var i = round.balls.length - 1; i >= 0; i--) {
       var b = round.balls[i];
       if (!isLive(b)) continue;
-      if (Math.hypot(b.x - x, b.y - y) <= b.r * 1.45) {
+      if (Math.hypot(b.x - x, b.y - y) <= hitR(b)) {
         b.state = 'popped'; b.st = 0;
         round.picks[b.z].push(b.n);
         round.idle = 0;
@@ -758,6 +813,7 @@
   pick('modes', 'data-m', function (m) { mode = m; $('lotto-cfg').style.display = m === 'lotto' ? 'block' : 'none'; });
   pick('lively', 'data-l', function (v) { cfg.lively = +v; });
   pick('shape', 'data-s', function (v) { cfg.shape = v; });
+  pick('size', 'data-z', function (v) { cfg.size = +v; });
   var minutes = 0;
   pick('timers', 'data-t', function (t) { minutes = +t; });
 
